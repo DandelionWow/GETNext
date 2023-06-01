@@ -60,12 +60,12 @@ def train(args):
 
     # Build POI graph (built from train_df)
     print('Loading POI graph...')
-    raw_A = load_graph_adj_mtx(args.data_adj_mtx)
+    raw_A = load_graph_adj_mtx(args.data_adj_mtx) # G的邻接矩阵A in 公式(1)
     raw_X = load_graph_node_features(args.data_node_feats,
                                      args.feature1,
                                      args.feature2,
                                      args.feature3,
-                                     args.feature4)
+                                     args.feature4) # 初始节点特征矩阵
     logging.info(
         f"raw_X.shape: {raw_X.shape}; "
         f"Four features: {args.feature1}, {args.feature2}, {args.feature3}, {args.feature4}.")
@@ -79,7 +79,7 @@ def train(args):
     one_hot_encoder.fit(list(map(lambda x: [x], cat_list)))
     one_hot_rlt = one_hot_encoder.transform(list(map(lambda x: [x], cat_list))).toarray()
     num_cats = one_hot_rlt.shape[-1]
-    X = np.zeros((num_pois, raw_X.shape[-1] - 1 + num_cats), dtype=np.float32)
+    X = np.zeros((num_pois, raw_X.shape[-1] - 1 + num_cats), dtype=np.float32) # 初始化输入节点特征矩阵X
     X[:, 0] = raw_X[:, 0]
     X[:, 1:num_cats + 1] = one_hot_rlt
     X[:, num_cats + 1:] = raw_X[:, 2:]
@@ -91,7 +91,7 @@ def train(args):
 
     # Normalization
     print('Laplician matrix...')
-    A = calculate_laplacian_matrix(raw_A, mat_type='hat_rw_normd_lap_mat')
+    A = calculate_laplacian_matrix(raw_A, mat_type='hat_rw_normd_lap_mat') # 公式(1) 计算拉普拉斯矩阵
 
     # POI id to index
     nodes_df = pd.read_csv(args.data_node_feats)
@@ -229,7 +229,7 @@ def train(args):
                           dropout=args.gcn_dropout)
 
     # Node Attn Model
-    node_attn_model = NodeAttnMap(in_features=X.shape[1], nhid=args.node_attn_nhid, use_mask=False)
+    node_attn_model = NodeAttnMap(in_features=X.shape[1], nhid=args.node_attn_nhid, use_mask=False) # 公式(4,5,6)
 
     # %% Model2: User embedding model, nn.embedding
     num_users = len(user_id2idx_dict)
@@ -317,9 +317,9 @@ def train(args):
 
         return input_seq_embed
 
-    def adjust_pred_prob_by_graph(y_pred_poi):
+    def adjust_pred_prob_by_graph(y_pred_poi): # 调整最终的POI
         y_pred_poi_adjusted = torch.zeros_like(y_pred_poi)
-        attn_map = node_attn_model(X, A)
+        attn_map = node_attn_model(X, A) # 获取transition attention map
 
         for i in range(len(batch_seq_lens)):
             traj_i_input = batch_input_seqs[i]  # list of input check-in pois
@@ -398,7 +398,7 @@ def train(args):
             batch_seq_labels_time = []
             batch_seq_labels_cat = []
 
-            poi_embeddings = poi_embed_model(X, A)
+            poi_embeddings = poi_embed_model(X, A) # 4.2.1小节
 
             # Convert input seq to embeddings
             for sample in batch:
@@ -433,7 +433,7 @@ def train(args):
             # Graph Attention adjusted prob
             y_pred_poi_adjusted = adjust_pred_prob_by_graph(y_pred_poi)
 
-            loss_poi = criterion_poi(y_pred_poi_adjusted.transpose(1, 2), y_poi)
+            loss_poi = criterion_poi(y_pred_poi_adjusted.transpose(1, 2), y_poi) # POI的loss
             loss_time = criterion_time(torch.squeeze(y_pred_time), y_time)
             loss_cat = criterion_cat(y_pred_cat.transpose(1, 2), y_cat)
 
@@ -829,8 +829,8 @@ def train(args):
 if __name__ == '__main__':
     args = parameter_parser()
     # The name of node features in NYC/graph_X.csv
-    args.feature1 = 'checkin_cnt'
-    args.feature2 = 'poi_catid'
-    args.feature3 = 'latitude'
-    args.feature4 = 'longitude'
+    args.feature1 = 'checkin_cnt' # check-in
+    args.feature2 = 'poi_catid' # category_id
+    args.feature3 = 'latitude' # 纬度
+    args.feature4 = 'longitude' # 经度
     train(args)

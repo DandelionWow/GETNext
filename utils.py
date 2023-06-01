@@ -60,13 +60,13 @@ def calculate_laplacian_matrix(adj_mat, mat_type):
     n_vertex = adj_mat.shape[0]
 
     # row sum
-    deg_mat_row = np.asmatrix(np.diag(np.sum(adj_mat, axis=1)))
+    deg_mat_row = np.asmatrix(np.diag(np.sum(adj_mat, axis=1))) # 计算每个节点的度？不是有向图嘛？只计算每个节点的出度？
     # column sum
     # deg_mat_col = np.asmatrix(np.diag(np.sum(adj_mat, axis=0)))
-    deg_mat = deg_mat_row
+    deg_mat = deg_mat_row # 度矩阵D
 
     adj_mat = np.asmatrix(adj_mat)
-    id_mat = np.asmatrix(np.identity(n_vertex))
+    id_mat = np.asmatrix(np.identity(n_vertex)) # 单位矩阵I
 
     if mat_type == 'com_lap_mat':
         # Combinatorial
@@ -83,7 +83,7 @@ def calculate_laplacian_matrix(adj_mat, mat_type):
         # For GCNConv
         wid_deg_mat = deg_mat + id_mat
         wid_adj_mat = adj_mat + id_mat
-        hat_rw_normd_lap_mat = np.matmul(np.linalg.matrix_power(wid_deg_mat, -1), wid_adj_mat)
+        hat_rw_normd_lap_mat = np.matmul(np.linalg.matrix_power(wid_deg_mat, -1), wid_adj_mat) # 计算
         return hat_rw_normd_lap_mat
     else:
         raise ValueError(f'ERROR: {mat_type} is unknown.')

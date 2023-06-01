@@ -11,29 +11,29 @@ class NodeAttnMap(nn.Module):
         super(NodeAttnMap, self).__init__()
         self.use_mask = use_mask
         self.out_features = nhid
-        self.W = nn.Parameter(torch.empty(size=(in_features, nhid)))
+        self.W = nn.Parameter(torch.empty(size=(in_features, nhid))) # 可训练的特征变换矩阵 316,128
         nn.init.xavier_uniform_(self.W.data, gain=1.414)
-        self.a = nn.Parameter(torch.empty(size=(2 * nhid, 1)))
+        self.a = nn.Parameter(torch.empty(size=(2 * nhid, 1))) # 可训练参数 256,1
         nn.init.xavier_uniform_(self.a.data, gain=1.414)
         self.leakyrelu = nn.LeakyReLU(0.2)
 
     def forward(self, X, A):
-        Wh = torch.mm(X, self.W)
+        Wh = torch.mm(X, self.W) # [4980,316] * [316,128] = [4980,128]
 
-        e = self._prepare_attentional_mechanism_input(Wh)
+        e = self._prepare_attentional_mechanism_input(Wh) # 公式(6)的前半段
 
         if self.use_mask:
             e = torch.where(A > 0, e, torch.zeros_like(e))  # mask
 
-        A = A + 1  # shift from 0-1 to 1-2
-        e = e * A
+        A = A + 1  # shift from 0-1 to 1-2 公式(6)的后半段，避免零值，拉普拉斯矩阵范围改为[1,2]，广播机制 [4980,4980]每个元素加1
+        e = e * A # 公式(6)，两矩阵[4980,4980]逐个元素相乘
 
-        return e
+        return e # 返回
 
     def _prepare_attentional_mechanism_input(self, Wh):
-        Wh1 = torch.matmul(Wh, self.a[:self.out_features, :])
-        Wh2 = torch.matmul(Wh, self.a[self.out_features:, :])
-        e = Wh1 + Wh2.T
+        Wh1 = torch.matmul(Wh, self.a[:self.out_features, :]) # Wh*a的前128 [4980,128]*[128,1]=[4980,1]
+        Wh2 = torch.matmul(Wh, self.a[self.out_features:, :]) # Wh*a的后128 [4980,128]*[128,1]=[4980,1]
+        e = Wh1 + Wh2.T # 广播机制 [4980,1]+[1,4980]=[4980,4980]
         return self.leakyrelu(e)
 
 
@@ -84,7 +84,7 @@ class GCN(nn.Module):
 
     def forward(self, x, adj):
         for i in range(len(self.gcn) - 1):
-            x = self.leaky_relu(self.gcn[i](x, adj))
+            x = self.leaky_relu(self.gcn[i](x, adj)) # 公式(2)
 
         x = F.dropout(x, self.dropout, training=self.training)
         x = self.gcn[-1](x, adj)
